@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LogiSel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="LogiSel: e-modul interaktif rumus logika Excel (IF, AND, OR) untuk siswa kelas 6 SD.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>
+/* Layout: lembar kerja sebagai metafora — header kolom A B C, nomor baris, formula bar sebagai "hero". */
+:root{
+  --paper:#F5F8FC;      /* latar seperti kertas lembar kerja, sedikit biru */
+  --surface:#FFFFFF;
+  --ink:#1C2742;        /* teks utama, biru tinta */
+  --muted:#5A6788;
+  --grid:#D5DDEA;       /* garis sel */
+  --head:#E8EEF7;       /* header kolom/baris */
+  --brand:#2B59C3;      /* biru pena */
+  --brand-ink:#FFFFFF;
+  --mark:#FFD23F;       /* stabilo kuning, sel terpilih */
+  --mark-ink:#1C2742;
+  --ok:#0F7B6C; --ok-bg:#DDF3EE;
+  --bad:#C23B4E; --bad-bg:#FBE3E6;
+  --warn-bg:#FFF4CC;
+  --shadow:0 1px 0 rgba(28,39,66,.06),0 6px 18px rgba(28,39,66,.07);
+  --f-display:'Poppins',system-ui,sans-serif;
+  --f-body:'Poppins',system-ui,sans-serif;
+  --f-mono:'JetBrains Mono','DejaVu Sans Mono',ui-monospace,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#111827;--surface:#18223A;--ink:#E7ECF7;--muted:#A3B0CC;--grid:#2C3A5C;--head:#1F2B47;
+  --brand:#7FA2FF;--brand-ink:#0E1630;--mark:#FFD23F;--mark-ink:#1C2742;
+  --ok:#5ED3BF;--ok-bg:#12352F;--bad:#FF8A9A;--bad-bg:#3A1A22;--warn-bg:#3A3215;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.35);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111827;--surface:#18223A;--ink:#E7ECF7;--muted:#A3B0CC;--grid:#2C3A5C;--head:#1F2B47;
+  --brand:#7FA2FF;--brand-ink:#0E1630;--mark:#FFD23F;--mark-ink:#1C2742;
+  --ok:#5ED3BF;--ok-bg:#12352F;--bad:#FF8A9A;--bad-bg:#3A1A22;--warn-bg:#3A3215;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.35);color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{background:var(--paper)}
+body{color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.65;margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:var(--f-display);line-height:1.25;text-wrap:balance;margin:0}
+a{color:var(--brand)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--mark);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono{font-family:var(--f-mono)}
+
+/* Header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--grid)}
+.top .wrap{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-family:var(--f-display);font-weight:700;font-size:1.25rem}
+.brand svg{flex:none}
+.nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.nav a{padding:6px 12px;border-radius:999px;text-decoration:none;color:var(--muted);font-weight:700;font-size:.95rem}
+.nav a[aria-current="page"]{background:var(--mark);color:var(--mark-ink)}
+.nav a:hover{color:var(--ink)}
+.prog{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);font-weight:700}
+.prog .bar{width:90px;height:8px;border-radius:99px;background:var(--head);overflow:hidden}
+.prog .bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .4s}
+
+main{padding-block:28px 64px}
+.view{display:grid;gap:28px}
+.eyebrow{font-family:var(--f-mono);font-size:.8rem;letter-spacing:.06em;color:var(--brand);font-weight:700;text-transform:uppercase}
+.lead{color:var(--muted);max-width:62ch;margin:0}
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:var(--r);padding:12px 20px;font-weight:800;cursor:pointer;text-decoration:none;background:var(--brand);color:var(--brand-ink);font-size:1rem}
+.btn.alt{background:var(--head);color:var(--ink)}
+.btn.ghost{background:transparent;color:var(--brand);padding:8px 10px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.panel{background:var(--surface);border:1px solid var(--grid);border-radius:14px;padding:22px;box-shadow:var(--shadow)}
+
+/* Formula bar + mini sheet (motif utama) */
+.fx{display:flex;align-items:stretch;border:1px solid var(--grid);border-radius:10px;overflow:hidden;background:var(--surface)}
+.fx .name{font-family:var(--f-mono);font-weight:700;padding:10px 12px;background:var(--head);border-right:1px solid var(--grid);min-width:56px;text-align:center}
+.fx .ico{font-family:var(--f-mono);font-style:italic;font-weight:700;padding:10px 12px;color:var(--brand);border-right:1px solid var(--grid)}
+.fx .code{font-family:var(--f-mono);padding:10px 12px;white-space:nowrap;overflow-x:auto;flex:1;min-width:0}
+.fx input{border:0;outline:none;background:transparent;flex:1;min-width:0;font-family:var(--f-mono);font-size:1rem;padding:10px 12px}
+.fx:focus-within{outline:3px solid var(--mark);outline-offset:1px}
+.tok-fn{color:var(--brand);font-weight:700}.tok-str{color:var(--ok)}.tok-ref{background:var(--mark);color:var(--mark-ink);border-radius:3px;padding:0 2px}
+.caret{display:inline-block;width:2px;height:1.1em;background:var(--ink);vertical-align:-3px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.sheet-scroll{overflow-x:auto;border:1px solid var(--grid);border-radius:10px;background:var(--surface)}
+table.sheet{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.95rem}
+.sheet th,.sheet td{border:1px solid var(--grid);padding:7px 10px;text-align:left;white-space:nowrap}
+.sheet thead th,.sheet .rn{background:var(--head);color:var(--muted);font-family:var(--f-mono);font-weight:700;font-size:.8rem;text-align:center}
+.sheet .rn{width:38px}
+.sheet .hdr td{font-weight:800}
+.sheet td.sel{outline:3px solid var(--brand);outline-offset:-3px}
+.sheet td.hl{background:var(--mark);color:var(--mark-ink)}
+.sheet td.ok{background:var(--ok-bg);color:var(--ok);font-weight:800}
+.sheet td.bad{background:var(--bad-bg);color:var(--bad);font-weight:800}
+.sheet td.num{text-align:right}
+
+/* Beranda */
+.hero{display:grid;grid-template-columns:1.1fr 1fr;gap:32px;align-items:center}
+.hero h1{font-size:clamp(1.9rem,4.4vw,3rem)}
+.hero h1 em{font-style:normal;background:linear-gradient(transparent 58%,var(--mark) 58%);padding:0 4px}
+.demo{display:grid;gap:12px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.step{display:grid;gap:6px;padding:18px;border-radius:14px;background:var(--surface);border:1px solid var(--grid)}
+.step b{font-family:var(--f-mono);color:var(--brand)}
+.tp{display:grid;gap:8px;margin:0;padding-left:1.2em}
+.mascot{display:flex;gap:14px;align-items:flex-start}
+.bubble{background:var(--surface);border:1px solid var(--grid);border-radius:14px;padding:12px 16px;position:relative}
+
+/* Peta belajar */
+.units{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.unit{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;padding:18px;border-radius:14px;background:var(--surface);border:1px solid var(--grid);text-decoration:none;color:var(--ink)}
+.unit .cell{font-family:var(--f-mono);font-weight:700;width:48px;height:40px;display:grid;place-items:center;border:2px solid var(--grid);border-radius:6px;background:var(--head)}
+.unit.done .cell{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.unit.lock{opacity:.6;cursor:not-allowed}
+.unit h3{font-size:1.05rem}
+.unit p{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+.chip{display:inline-block;font-size:.75rem;font-weight:800;padding:2px 8px;border-radius:99px;background:var(--head);color:var(--muted);margin-top:8px}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+
+/* Materi */
+.lesson{display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start}
+.toc{display:grid;gap:4px;position:sticky;top:90px}
+.toc button{text-align:left;border:0;background:transparent;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--muted);font-weight:700}
+.toc button[aria-current="step"]{background:var(--head);color:var(--ink)}
+.toc button.seen::before{content:"✓ ";color:var(--ok)}
+.stepcount{font-family:var(--f-mono);font-size:.85rem;color:var(--muted)}
+.lesson-body{display:grid;gap:18px;min-width:0}
+.lesson-body h2{font-size:1.5rem}
+.lesson-body p{margin:0;max-width:64ch}
+.callout{border-left:4px solid var(--brand);background:var(--head);padding:12px 16px;border-radius:0 10px 10px 0}
+.callout.tip{border-color:var(--mark);background:var(--warn-bg)}
+.parts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.part{padding:12px;border-radius:10px;border:2px dashed var(--grid);background:var(--surface)}
+.part code{font-family:var(--f-mono);font-weight:700;color:var(--brand)}
+.part small{display:block;color:var(--muted)}
+
+/* Cek / kuis */
+.q{display:grid;gap:10px}
+.opts{display:grid;gap:8px}
+.opt{display:flex;gap:10px;align-items:center;text-align:left;padding:12px 14px;border-radius:10px;border:2px solid var(--grid);background:var(--surface);cursor:pointer;font-weight:700}
+.opt:hover{border-color:var(--brand)}
+.opt .k{font-family:var(--f-mono);width:28px;height:28px;display:grid;place-items:center;border-radius:6px;background:var(--head);flex:none}
+.opt.right{border-color:var(--ok);background:var(--ok-bg)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg)}
+.opt code{font-family:var(--f-mono)}
+.fb{padding:12px 16px;border-radius:10px;font-weight:700}
+.fb.ok{background:var(--ok-bg);color:var(--ok)}
+.fb.bad{background:var(--bad-bg);color:var(--bad)}
+.fb.info{background:var(--warn-bg);color:var(--ink)}
+.fb p{margin:4px 0 0;font-weight:500;color:var(--ink)}
+
+/* Lab */
+.lab{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+.lab-main{display:grid;gap:16px;min-width:0}
+.tasks{display:flex;gap:8px;flex-wrap:wrap}
+.task-btn{border:2px solid var(--grid);background:var(--surface);border-radius:999px;padding:6px 14px;font-weight:800;cursor:pointer}
+.task-btn[aria-pressed="true"]{border-color:var(--brand);background:var(--brand);color:var(--brand-ink)}
+.task-btn.done::after{content:" ✓"}
+.side{display:grid;gap:14px}
+.hint{font-size:.95rem}
+.sep-note{font-size:.88rem;color:var(--muted)}
+.score{font-family:var(--f-display);font-size:3rem;font-weight:700;color:var(--brand);line-height:1}
+
+.foot{border-top:1px solid var(--grid);color:var(--muted);font-size:.85rem}
+.foot .wrap{padding-block:18px}
+
+@media (max-width:820px){
+  .hero,.lab,.lesson{grid-template-columns:1fr}
+  .toc{position:static;grid-auto-flow:column;grid-auto-columns:max-content;overflow-x:auto}
+  .steps,.units,.parts{grid-template-columns:1fr}
+  .top .wrap{gap:8px 12px}
+  .prog{margin-left:auto}
+  .nav{margin-left:0;width:100%;order:3;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .nav a{white-space:nowrap;padding:5px 10px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#beranda" aria-label="LogiSel, ke beranda">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="2" y="2" width="30" height="30" rx="7" fill="var(--mark)" stroke="var(--ink)" stroke-width="2"/><circle cx="12" cy="15" r="2.6" fill="var(--ink)"/><circle cx="22" cy="15" r="2.6" fill="var(--ink)"/><path d="M11 22c3 3 9 3 12 0" stroke="var(--ink)" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
+      LogiSel
+    </a>
+    <nav class="nav" aria-label="Menu utama">
+      <a href="#beranda" data-r="beranda">Beranda</a>
+      <a href="#materi" data-r="materi">Peta Belajar</a>
+      <a href="#lab" data-r="lab">Lab Rumus</a>
+      <a href="#kuis" data-r="kuis">Kuis</a>
+      <a href="#info" data-r="info">Petunjuk</a>
+    </nav>
+    <div class="prog" title="Kemajuan belajarmu"><span id="progTxt">0%</span><span class="bar"><i id="progBar"></i></span></div>
+  </div>
+</header>
+
+<main class="wrap" id="app" aria-live="polite"></main>
+
+<footer class="foot"><div class="wrap">Prototipe v0.1 · LogiSel dikembangkan oleh Andifa Fais Pratama (K3524006), Pendidikan Teknik Informatika dan Komputer FKIP UNS · Materi mengacu pada buku Informatika +KA Kelas 6, Elemen 4B.</div></footer>
+
+<script>
+/* ===================== Data ===================== */
+const UNITS=[
+ {id:'u1',cell:'A1',title:'Operator Perbandingan',desc:'Membandingkan dua nilai dengan > < = >= <= <>.',steps:[
+  {h:'Komputer juga bisa membandingkan',body:`<p>Setiap hari kita membandingkan sesuatu. Misalnya, “Apakah nilaiku <b>lebih dari</b> nilai KKM?” Excel juga bisa melakukannya dengan <b>operator perbandingan</b>.</p>
+   <div class="sheet-scroll"><table class="sheet"><thead><tr><th class="rn"></th><th>Operator</th><th>Artinya</th><th>Contoh</th><th>Hasil</th></tr></thead><tbody>
+   <tr><td class="rn">1</td><td class="mono">&gt;</td><td>lebih dari</td><td class="mono">=80&gt;75</td><td class="ok">TRUE</td></tr>
+   <tr><td class="rn">2</td><td class="mono">&lt;</td><td>kurang dari</td><td class="mono">=60&lt;75</td><td class="ok">TRUE</td></tr>
+   <tr><td class="rn">3</td><td class="mono">=</td><td>sama dengan</td><td class="mono">=75=75</td><td class="ok">TRUE</td></tr>
+   <tr><td class="rn">4</td><td class="mono">&gt;=</td><td>lebih dari atau sama dengan</td><td class="mono">=74&gt;=75</td><td class="bad">FALSE</td></tr>
+   <tr><td class="rn">5</td><td class="mono">&lt;=</td><td>kurang dari atau sama dengan</td><td class="mono">=75&lt;=75</td><td class="ok">TRUE</td></tr>
+   <tr><td class="rn">6</td><td class="mono">&lt;&gt;</td><td>tidak sama dengan</td><td class="mono">=70&lt;&gt;75</td><td class="ok">TRUE</td></tr>
+   </tbody></table></div>`},
+  {h:'TRUE dan FALSE',body:`<p>Hasil perbandingan hanya ada dua: <b class="mono">TRUE</b> (benar) atau <b class="mono">FALSE</b> (salah). Inilah yang disebut <b>nilai logika</b>.</p>
+   <div class="callout tip"><b>Ingat!</b> Tanda <span class="mono">&gt;=</span> ditulis berurutan: tanda lebih dulu, lalu sama dengan. Tidak boleh ada spasi di tengahnya.</div>`},
+ ],check:{q:'Nilai Bima 75 dan KKM 75. Apa hasil rumus <span class="mono">=75&gt;75</span>?',opts:['TRUE','FALSE','75','Error'],a:1,why:'75 tidak lebih besar dari 75, jadi hasilnya FALSE. Kalau ingin 75 ikut dihitung, gunakan >=.'}},
+ {id:'u2',cell:'B1',title:'Fungsi IF',desc:'Membuat keputusan: jika syarat benar, tampilkan A; jika salah, tampilkan B.',steps:[
+  {h:'IF artinya “jika”',body:`<p>Fungsi <b class="mono">IF</b> membantu Excel mengambil keputusan, seperti guru yang memeriksa nilai: <i>jika</i> nilai minimal 75, tulis “Tuntas”; <i>jika tidak</i>, tulis “Remedial”.</p>
+   <div class="fx"><span class="name">C2</span><span class="ico">fx</span><span class="code" data-hl>=IF(B2&gt;=75;"Tuntas";"Remedial")</span></div>`},
+  {h:'Tiga bagian rumus IF',body:`<p>Rumus IF selalu punya <b>tiga bagian</b> di dalam kurung, dipisahkan tanda titik koma <span class="mono">;</span> atau koma <span class="mono">,</span>.</p>
+   <div class="parts"><div class="part"><small>Bagian 1 · Syarat</small><code>B2&gt;=75</code><small>Pertanyaan yang jawabannya TRUE/FALSE</small></div>
+   <div class="part"><small>Bagian 2 · Jika benar</small><code>"Tuntas"</code><small>Ditampilkan kalau syarat TRUE</small></div>
+   <div class="part"><small>Bagian 3 · Jika salah</small><code>"Remedial"</code><small>Ditampilkan kalau syarat FALSE</small></div></div>
+   <div class="callout tip"><b>Teks harus diapit tanda kutip.</b> Tulis <span class="mono">"Tuntas"</span>, bukan <span class="mono">Tuntas</span>. Tanpa kutip, Excel mengira itu nama lain dan muncul pesan <span class="mono">#NAME?</span>.</div>`},
+  {h:'Lihat cara kerjanya',body:`<p>Rumus ditulis sekali di sel <b class="mono">C2</b>, lalu ditarik ke bawah. Excel otomatis mengganti <span class="mono">B2</span> menjadi <span class="mono">B3</span>, <span class="mono">B4</span>, dan seterusnya.</p>
+   <div class="sheet-scroll"><table class="sheet"><thead><tr><th class="rn"></th><th>A</th><th>B</th><th>C</th></tr></thead><tbody>
+   <tr class="hdr"><td class="rn">1</td><td>Nama</td><td>Nilai</td><td>Keterangan</td></tr>
+   <tr><td class="rn">2</td><td>Rani</td><td class="num hl">82</td><td class="ok sel">Tuntas</td></tr>
+   <tr><td class="rn">3</td><td>Bima</td><td class="num">75</td><td class="ok">Tuntas</td></tr>
+   <tr><td class="rn">4</td><td>Tegar</td><td class="num">68</td><td class="bad">Remedial</td></tr>
+   </tbody></table></div>
+   <div class="callout">Perhatikan Bima. Nilainya tepat 75 dan tetap <b>Tuntas</b>, karena syaratnya <span class="mono">&gt;=</span> (lebih dari atau sama dengan).</div>`},
+ ],check:{q:'Sel B2 berisi 80. Apa hasil <span class="mono">=IF(B2&gt;80;"Hebat";"Ayo latihan")</span>?',opts:['Hebat','Ayo latihan','TRUE','#NAME?'],a:1,why:'80 tidak lebih besar dari 80, jadi syarat bernilai FALSE dan yang tampil bagian ketiga: "Ayo latihan".'}},
+ {id:'u3',cell:'C1',title:'Fungsi AND dan OR',desc:'Menggabungkan dua syarat atau lebih.',steps:[
+  {h:'AND: semua syarat harus benar',body:`<p><b class="mono">AND</b> bernilai TRUE hanya jika <b>semua</b> syarat benar. Contoh: lulus ekstrakurikuler robotik jika nilai teori <b>dan</b> praktik sama-sama minimal 75.</p>
+   <div class="fx"><span class="name">D2</span><span class="ico">fx</span><span class="code" data-hl>=IF(AND(B2&gt;=75;C2&gt;=75);"Lulus";"Belum")</span></div>`},
+  {h:'OR: cukup satu syarat benar',body:`<p><b class="mono">OR</b> bernilai TRUE jika <b>salah satu</b> syarat benar. Contoh: boleh meminjam buku jika punya kartu perpustakaan <b>atau</b> membawa surat izin.</p>
+   <div class="fx"><span class="name">D2</span><span class="ico">fx</span><span class="code" data-hl>=IF(OR(B2="Ya";C2="Ya");"Boleh";"Tidak boleh")</span></div>
+   <div class="callout tip"><b>Cara mudah mengingat:</b> AND itu “dan” (harus dua-duanya), OR itu “atau” (salah satu saja cukup).</div>`},
+ ],check:{q:'Teori 80 dan praktik 70. Apa hasil <span class="mono">=AND(80&gt;=75;70&gt;=75)</span>?',opts:['TRUE','FALSE','Lulus','80'],a:1,why:'AND butuh semua syarat benar. 70>=75 salah, jadi hasilnya FALSE.'}},
+ {id:'u4',cell:'D1',title:'Proyek Mini: Rekap Nilai Kelas',desc:'Menggabungkan IF, AND, dan OR untuk mengolah data nyata. Tersedia di versi lengkap.',lock:true,steps:[]},
+];
+
+const TASKS=[
+ {id:'t1',name:'Ketuntasan Ulangan',goal:'Isi kolom C: tulis <b>"Tuntas"</b> jika nilai minimal 75 (KKM), selain itu <b>"Remedial"</b>.',
+  cols:['Nama','Nilai','Keterangan'],rows:[['Rani',82],['Bima',75],['Tegar',68],['Sekar',90],['Dimas',74]],target:'C',
+  expect:r=>r[1]>=75?'Tuntas':'Remedial',
+  hints:['Gunakan fungsi IF dengan tiga bagian: syarat, jika benar, jika salah.','Syaratnya membandingkan sel B2 dengan 75. Apakah nilai tepat 75 termasuk tuntas?','Coba: =IF(B2>=75;"Tuntas";"Remedial")'],
+  edge:{row:1,msg:'Lihat baris Bima: nilainya tepat 75. KKM artinya nilai minimal, jadi 75 termasuk Tuntas. Gunakan >= (lebih dari atau sama dengan), bukan >.'}},
+ {id:'t2',name:'Wahana Bianglala',goal:'Pengunjung boleh naik jika tinggi badan minimal 120 cm. Isi kolom C dengan <b>"Boleh naik"</b> atau <b>"Belum boleh"</b>.',
+  cols:['Nama','Tinggi (cm)','Izin'],rows:[['Nadia',128],['Yosef',119],['Kevin',120],['Clara',135],['Gita',112]],target:'C',
+  expect:r=>r[1]>=120?'Boleh naik':'Belum boleh',
+  hints:['Bandingkan tinggi badan di kolom B dengan angka 120.','Kevin tingginya tepat 120 cm. Ia boleh naik atau tidak?','Coba: =IF(B2>=120;"Boleh naik";"Belum boleh")'],
+  edge:{row:2,msg:'Kevin tingginya tepat 120 cm dan seharusnya boleh naik. Gunakan >= supaya angka 120 ikut memenuhi syarat.'}},
+ {id:'t3',name:'Lulus Robotik (AND)',goal:'Siswa <b>"Lulus"</b> jika nilai teori <b>dan</b> praktik sama-sama minimal 75. Selain itu <b>"Belum"</b>.',
+  cols:['Nama','Teori','Praktik','Hasil'],rows:[['Arya',80,85],['Lala',90,70],['Joko',75,75],['Mira',60,88],['Tio',72,64]],target:'D',
+  expect:r=>(r[1]>=75&&r[2]>=75)?'Lulus':'Belum',
+  hints:['Kamu butuh dua syarat sekaligus. Fungsi apa yang mengharuskan semua syarat benar?','Masukkan AND sebagai bagian pertama IF: =IF(AND(syarat1;syarat2);...;...)','Coba: =IF(AND(B2>=75;C2>=75);"Lulus";"Belum")'],
+  edge:{row:2,msg:'Joko mendapat 75 untuk teori dan praktik, jadi seharusnya Lulus. Periksa apakah kamu memakai >= di kedua syarat.'}},
+ {id:'t4',name:'Pinjam Buku (OR)',goal:'Siswa <b>"Boleh"</b> meminjam jika punya kartu <b>atau</b> surat izin (isinya "Ya"). Selain itu <b>"Tidak boleh"</b>.',
+  cols:['Nama','Kartu','Surat Izin','Pinjam'],rows:[['Bayu','Ya','Tidak'],['Citra','Tidak','Ya'],['Dewa','Tidak','Tidak'],['Eka','Ya','Ya'],['Fani','Tidak','Tidak']],target:'D',
+  expect:r=>(r[1]==='Ya'||r[2]==='Ya')?'Boleh':'Tidak boleh',
+  hints:['Cukup salah satu syarat benar. Fungsi apa yang cocok?','Untuk membandingkan teks, tulis teksnya dalam kutip: B2="Ya"','Coba: =IF(OR(B2="Ya";C2="Ya");"Boleh";"Tidak boleh")']},
+];
+
+const QUIZ=[
+ {q:'Rumus manakah yang benar untuk: “jika nilai di B2 minimal 75 tampilkan Tuntas, jika tidak tampilkan Remedial”?',opts:['=IF(B2>75;"Tuntas";"Remedial")','=IF(B2>=75;"Tuntas";"Remedial")','=IF(B2>=75;Tuntas;Remedial)','IF(B2>=75;"Tuntas";"Remedial")'],a:1,why:'Gunakan >= agar nilai 75 ikut tuntas, teks diapit kutip, dan rumus diawali tanda =.'},
+ {q:'Sel B2 berisi 80. Apa hasil =IF(B2>80;"Hebat";"Ayo latihan")?',opts:['Hebat','Ayo latihan','TRUE','#NAME?'],a:1,why:'80 > 80 bernilai FALSE, jadi Excel menampilkan bagian ketiga.'},
+ {q:'Operator untuk “tidak sama dengan” di Excel adalah …',opts:['!=','=/','<>','><'],a:2,why:'Excel memakai <> untuk “tidak sama dengan”.'},
+ {q:'=AND(B2>=75;C2>=75) bernilai TRUE jika …',opts:['B2 atau C2 minimal 75','B2 dan C2 sama-sama minimal 75','B2 lebih besar dari C2','Salah satu kurang dari 75'],a:1,why:'AND hanya TRUE jika semua syarat benar.'},
+ {q:'Mengapa muncul #NAME? pada rumus =IF(B2>=75;Tuntas;Remedial)?',opts:['Karena angka 75 salah','Karena teks Tuntas dan Remedial tidak diapit tanda kutip','Karena IF harus ditulis huruf kecil','Karena B2 kosong'],a:1,why:'Teks di dalam rumus harus diapit tanda kutip ganda.'},
+];
+
+/* ===================== State (per-penampil, opsional) ===================== */
+const KEY='logisel.v1';
+let S={units:{},tasks:{},quiz:0};
+try{const raw=localStorage.getItem(KEY);if(raw)S=Object.assign(S,JSON.parse(raw))}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}updateProg()}
+function updateProg(){
+  const total=3+TASKS.length+1;
+  const done=Object.keys(S.units).length+Object.keys(S.tasks).length+(S.quiz>=80?1:0);
+  const p=Math.round(done/total*100);
+  document.getElementById('progTxt').textContent=p+'%';
+  document.getElementById('progBar').style.width=p+'%';
+}
+
+/* ===================== Mesin rumus mini ===================== */
+class FErr extends Error{constructor(code,msg){super(msg);this.code=code}}
+function tokenize(src){
+  const t=[];let i=0;
+  while(i<src.length){
+    const c=src[i];
+    if(c===' '){i++;continue}
+    if(c==='"'){let j=i+1,s='';while(j<src.length&&src[j]!=='"'){s+=src[j];j++}
+      if(j>=src.length)throw new FErr('quote','Tanda kutip belum ditutup. Setiap teks perlu kutip pembuka dan penutup, misalnya "Tuntas".');
+      t.push({k:'str',v:s});i=j+1;continue}
+    if(/[0-9.]/.test(c)){let j=i;while(j<src.length&&/[0-9.]/.test(src[j]))j++;t.push({k:'num',v:parseFloat(src.slice(i,j))});i=j;continue}
+    if(/[A-Za-z_]/.test(c)){let j=i;while(j<src.length&&/[A-Za-z0-9_]/.test(src[j]))j++;const w=src.slice(i,j);
+      if(/^[A-Za-z]{1,2}[0-9]+$/.test(w))t.push({k:'ref',v:w.toUpperCase()});else t.push({k:'id',v:w});i=j;continue}
+    const two=src.slice(i,i+2);
+    if(['>=','<=','<>'].includes(two)){t.push({k:'op',v:two});i+=2;continue}
+    if('=<>+-*/&'.includes(c)){t.push({k:'op',v:c});i++;continue}
+    if(c==='('||c===')'){t.push({k:c});i++;continue}
+    if(c===';'||c===','){t.push({k:'sep'});i++;continue}
+    if(c==='“'||c==='”')throw new FErr('smartq','Gunakan tanda kutip lurus (") dari keyboard, bukan kutip miring “ ”.');
+    throw new FErr('char','Ada simbol yang tidak dikenali: '+c);
+  }
+  return t;
+}
+function parse(tokens){
+  let p=0;const peek=()=>tokens[p],next=()=>tokens[p++];
+  function expr(){let l=concat();while(peek()&&peek().k==='op'&&['=','<','>','>=','<=','<>'].includes(peek().v)){const o=next().v;l={t:'cmp',o,l,r:concat()}}return l}
+  function concat(){let l=add();while(peek()&&peek().k==='op'&&peek().v==='&'){next();l={t:'cat',l,r:add()}}return l}
+  function add(){let l=mul();while(peek()&&peek().k==='op'&&'+-'.includes(peek().v)){const o=next().v;l={t:'ar',o,l,r:mul()}}return l}
+  function mul(){let l=un();while(peek()&&peek().k==='op'&&'*/'.includes(peek().v)){const o=next().v;l={t:'ar',o,l,r:un()}}return l}
+  function un(){if(peek()&&peek().k==='op'&&peek().v==='-'){next();return{t:'neg',e:un()}}return prim()}
+  function prim(){
+    const k=next();
+    if(!k)throw new FErr('end','Rumus berhenti terlalu cepat. Periksa apakah ada bagian yang belum ditulis.');
+    if(k.k==='num')return{t:'num',v:k.v};
+    if(k.k==='str')return{t:'str',v:k.v};
+    if(k.k==='ref')return{t:'ref',v:k.v};
+    if(k.k==='('){const e=expr();if(!peek()||peek().k!==')')throw new FErr('paren','Kurung tutup ) kurang. Jumlah kurung buka dan tutup harus sama.');next();return e}
+    if(k.k==='id'){
+      const n=k.v.toUpperCase();
+      if(n==='TRUE'||n==='FALSE')return{t:'bool',v:n==='TRUE'};
+      if(peek()&&peek().k==='('){next();const args=[];
+        if(peek()&&peek().k===')'){next();return{t:'fn',n,args}}
+        while(true){args.push(expr());if(peek()&&peek().k==='sep'){next();continue}
+          if(peek()&&peek().k===')'){next();break}
+          if(!peek())throw new FErr('paren','Kurung tutup ) di akhir rumus belum ditulis. Jumlah kurung buka dan tutup harus sama.');
+          throw new FErr('paren','Setelah setiap bagian harus ada pemisah ; atau kurung tutup ). Periksa susunan rumusmu.')}
+        return{t:'fn',n,args}}
+      throw new FErr('name','Kata '+k.v+' belum diapit tanda kutip. Teks di dalam rumus harus ditulis seperti "'+k.v+'". (Di Excel ini memunculkan #NAME?)');
+    }
+    if(k.k==='sep')throw new FErr('sep','Ada pemisah ; atau , di tempat yang salah. Mungkin ada bagian yang kosong.');
+    if(k.k===')')throw new FErr('paren','Ada kurung tutup ) yang berlebih atau di tempat yang salah.');
+    throw new FErr('op','Tanda '+(k.v||k.k)+' muncul di tempat yang salah. Ingat: >= ditulis tanpa spasi dan tanda = di depan rumus hanya satu.');
+  }
+  const ast=expr();
+  if(p<tokens.length){const k=tokens[p];if(k.k===')')throw new FErr('paren','Ada kurung tutup ) yang berlebih.');throw new FErr('extra','Ada bagian rumus yang berlebih setelah rumus selesai. Periksa kembali susunannya.')}
+  return ast;
+}
+function evaluate(ast,ctx){
+  const ev=a=>evaluate(a,ctx);
+  switch(ast.t){
+    case 'num':case 'str':case 'bool':return ast.v;
+    case 'ref':return ctx.get(ast.v);
+    case 'neg':return -num(ev(ast.e));
+    case 'ar':{const a=num(ev(ast.l)),b=num(ev(ast.r));return ast.o==='+'?a+b:ast.o==='-'?a-b:ast.o==='*'?a*b:a/b}
+    case 'cat':return String(ev(ast.l))+String(ev(ast.r));
+    case 'cmp':{let a=ev(ast.l),b=ev(ast.r);if(typeof a==='string'&&typeof b==='string'){a=a.toLowerCase();b=b.toLowerCase()}
+      if(typeof a!==typeof b&&ast.o!=='='&&ast.o!=='<>'&&(typeof a==='string'||typeof b==='string'))throw new FErr('type','Kamu membandingkan teks dengan angka. Periksa kolom yang kamu pakai di syarat.');
+      switch(ast.o){case '=':return a===b;case '<>':return a!==b;case '<':return a<b;case '>':return a>b;case '<=':return a<=b;case '>=':return a>=b}}
+    case 'fn':{
+      if(ast.n==='IF'){if(ast.args.length<2||ast.args.length>3)throw new FErr('ifargs','Fungsi IF butuh tiga bagian: syarat; jika benar; jika salah. Rumusmu punya '+ast.args.length+' bagian.');
+        const c=ev(ast.args[0]);if(typeof c!=='boolean')throw new FErr('ifcond','Bagian pertama IF harus berupa syarat yang hasilnya TRUE/FALSE, misalnya B2>=75.');
+        return c?ev(ast.args[1]):(ast.args[2]?ev(ast.args[2]):false)}
+      if(ast.n==='AND'||ast.n==='OR'){if(ast.args.length<1)throw new FErr('args',ast.n+' butuh minimal satu syarat.');
+        const vs=ast.args.map(ev);if(vs.some(v=>typeof v!=='boolean'))throw new FErr('args','Isi '+ast.n+' harus berupa syarat, misalnya B2>=75.');
+        return ast.n==='AND'?vs.every(Boolean):vs.some(Boolean)}
+      if(ast.n==='NOT'){const v=ev(ast.args[0]);return !v}
+      throw new FErr('fn','Fungsi '+ast.n+' belum dikenal di lab ini. Gunakan IF, AND, atau OR.');
+    }
+  }
+}
+function num(v){if(typeof v==='number')return v;if(typeof v==='boolean')return v?1:0;const n=Number(v);if(isNaN(n))throw new FErr('type','Ada teks yang dihitung seperti angka.');return n}
+function hlFormula(s){return s.replace(/("[^"]*")|\b(IF|AND|OR|NOT)\b|\b([A-Z]{1,2}[0-9]+)\b/g,(m,str,fn,ref)=>str?`<span class="tok-str">${esc(str)}</span>`:fn?`<span class="tok-fn">${fn}</span>`:`<span class="tok-ref">${ref}</span>`)}
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+
+/* ===================== Views ===================== */
+const app=document.getElementById('app');
+const views={beranda,materi,belajar,lab,kuis,info};
+function route(){
+  let r=(location.hash||'#beranda').slice(1);let arg=null;
+  if(/^u[1-4]$/.test(r)){arg=r;r='belajar'}
+  if(!views[r])r='beranda';
+  document.querySelectorAll('.nav a').forEach(a=>a.toggleAttribute('aria-current',a.dataset.r===(r==='belajar'?'materi':r)));
+  document.querySelectorAll('.nav a').forEach(a=>{if(a.hasAttribute('aria-current'))a.setAttribute('aria-current','page')});
+  app.innerHTML='';views[r](arg);window.scrollTo(0,0);
+  app.querySelectorAll('[data-hl]').forEach(el=>el.innerHTML=hlFormula(el.textContent));
+}
+window.addEventListener('hashchange',route);
+
+function beranda(){
+  app.innerHTML=`<section class="view">
+   <div class="hero">
+     <div style="display:grid;gap:18px">
+       <span class="eyebrow">Informatika Kelas 6 · Elemen 4B</span>
+       <h1>Ajari Excel <em>mengambil keputusan</em> dengan rumus logika</h1>
+       <p class="lead">Belajar fungsi IF, AND, dan OR langkah demi langkah. Coba langsung rumusnya di Lab Rumus, lalu lihat apakah hasilnya sudah benar. Bisa dibuka di komputer lab maupun HP di rumah.</p>
+       <div class="row"><a class="btn" href="#materi">Mulai Belajar</a><a class="btn alt" href="#lab">Langsung ke Lab Rumus</a></div>
+     </div>
+     <div class="demo panel" aria-label="Contoh rumus IF yang sedang bekerja">
+       <div class="fx"><span class="name">C2</span><span class="ico">fx</span><span class="code" id="typer"></span></div>
+       <div class="sheet-scroll"><table class="sheet"><thead><tr><th class="rn"></th><th>A</th><th>B</th><th>C</th></tr></thead><tbody id="demoBody"></tbody></table></div>
+       <small style="color:var(--muted)">Contoh data. KKM = 75.</small>
+     </div>
+   </div>
+   <div class="steps">
+     <div class="step"><b>1 · Pahami</b><span>Materi dipecah menjadi langkah pendek dengan contoh tabel.</span></div>
+     <div class="step"><b>2 · Coba</b><span>Tulis rumus sendiri di Lab Rumus dan dapatkan umpan balik langsung.</span></div>
+     <div class="step"><b>3 · Uji</b><span>Kerjakan kuis singkat untuk mengecek pemahamanmu.</span></div>
+   </div>
+   <div class="panel mascot">
+     <svg width="56" height="56" viewBox="0 0 34 34" aria-hidden="true" style="flex:none"><rect x="2" y="2" width="30" height="30" rx="7" fill="var(--mark)" stroke="var(--ink)" stroke-width="2"/><circle cx="12" cy="15" r="2.6" fill="var(--ink)"/><circle cx="22" cy="15" r="2.6" fill="var(--ink)"/><path d="M11 22c3 3 9 3 12 0" stroke="var(--ink)" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>
+     <div style="display:grid;gap:8px"><b>Halo, aku Logi si sel kuning!</b>
+     <span>Setelah belajar di sini, kamu bisa:</span>
+     <ol class="tp"><li>menggunakan operator perbandingan untuk menghasilkan TRUE atau FALSE,</li><li>menulis fungsi IF dengan tiga bagian yang benar,</li><li>menggabungkan dua syarat dengan AND atau OR di dalam IF.</li></ol></div>
+   </div></section>`;
+  runDemo();
+}
+let demoTimer;
+function runDemo(){
+  clearTimeout(demoTimer);
+  const f='=IF(B2>=75;"Tuntas";"Remedial")';const data=[['Nama','Nilai','Keterangan'],['Rani',82],['Bima',75],['Tegar',68]];
+  const typer=document.getElementById('typer'),body=document.getElementById('demoBody');if(!typer)return;
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function draw(n){body.innerHTML=data.map((r,i)=>{if(i===0)return`<tr class="hdr"><td class="rn">1</td><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`;
+    const res=i<=n?(r[1]>=75?'Tuntas':'Remedial'):'';const cls=i<=n?(r[1]>=75?'ok':'bad'):'';
+    return`<tr><td class="rn">${i+1}</td><td>${r[0]}</td><td class="num">${r[1]}</td><td class="${cls}${i===1?' sel':''}">${res}</td></tr>`}).join('')}
+  if(reduce){typer.innerHTML=hlFormula(f);draw(3);return}
+  let i=0;draw(0);
+  (function tick(){if(!document.body.contains(typer))return;
+    if(i<=f.length){typer.innerHTML=hlFormula(f.slice(0,i))+'<span class="caret"></span>';i++;demoTimer=setTimeout(tick,70)}
+    else{let n=1;(function fill(){if(!document.body.contains(typer))return;draw(n);n++;if(n<=3)demoTimer=setTimeout(fill,450);else demoTimer=setTimeout(()=>{i=0;draw(0);tick()},3500)})()}})();
+}
+
+function materi(){
+  app.innerHTML=`<section class="view"><div style="display:grid;gap:8px"><span class="eyebrow">Peta Belajar</span><h1>Pilih materi, mulai dari sel A1</h1><p class="lead">Urutan materi disusun dari yang paling dasar. Selesaikan cek pemahaman di akhir setiap materi untuk mendapat tanda centang.</p></div>
+  <div class="units">${UNITS.map(u=>{const d=S.units[u.id];return u.lock
+    ?`<div class="unit lock" aria-disabled="true"><span class="cell">${u.cell}</span><div><h3>${u.title}</h3><p>${u.desc}</p><span class="chip">Versi lengkap (UAS)</span></div></div>`
+    :`<a class="unit${d?' done':''}" href="#${u.id}"><span class="cell">${d?'✓':u.cell}</span><div><h3>${u.title}</h3><p>${u.desc}</p><span class="chip${d?' ok':''}">${d?'Selesai':u.steps.length+' langkah + cek pemahaman'}</span></div></a>`}).join('')}</div>
+  <div class="panel row" style="justify-content:space-between"><span><b>Sudah paham materinya?</b> Latih rumusmu dengan data nyata.</span><a class="btn" href="#lab">Buka Lab Rumus</a></div></section>`;
+}
+
+function belajar(id){
+  const u=UNITS.find(x=>x.id===id);if(!u||u.lock){location.hash='#materi';return}
+  let i=0;const seen=new Set([0]);const n=u.steps.length;
+  function render(){
+    const isCheck=i===n;
+    app.innerHTML=`<section class="view"><div class="row" style="justify-content:space-between"><a class="btn ghost" href="#materi">← Peta Belajar</a><span class="stepcount">${isCheck?'Cek pemahaman':'Langkah '+(i+1)+' dari '+n}</span></div>
+    <div class="lesson"><nav class="toc" aria-label="Langkah materi">${u.steps.map((s,k)=>`<button data-k="${k}" class="${seen.has(k)&&k!==i?'seen':''}" ${k===i?'aria-current="step"':''}>${k+1}. ${s.h}</button>`).join('')}<button data-k="${n}" ${isCheck?'aria-current="step"':''}>★ Cek pemahaman</button></nav>
+    <article class="lesson-body panel"><span class="eyebrow">${u.cell} · ${u.title}</span>
+     ${isCheck?checkHTML(u.check):`<h2>${u.steps[i].h}</h2>${u.steps[i].body}`}
+     <div class="row" style="justify-content:space-between;margin-top:6px"><button class="btn alt" id="prev" ${i===0?'disabled':''}>← Sebelumnya</button>${isCheck?'':`<button class="btn" id="nextB">${i===n-1?'Cek pemahaman →':'Lanjut →'}</button>`}</div>
+    </article></div></section>`;
+    app.querySelectorAll('[data-hl]').forEach(el=>el.innerHTML=hlFormula(el.textContent));
+    app.querySelectorAll('.toc button').forEach(b=>b.onclick=()=>{i=+b.dataset.k;seen.add(i);render()});
+    const pv=document.getElementById('prev');pv.onclick=()=>{if(i>0){i--;render()}};
+    const nx=document.getElementById('nextB');if(nx)nx.onclick=()=>{i++;seen.add(i);render()};
+    if(isCheck)bindCheck(u.check,ok=>{if(ok){S.units[u.id]=1;save()}});
+  }
+  render();
+}
+function checkHTML(c){return`<h2>Cek pemahaman</h2><div class="q"><p>${c.q}</p><div class="opts">${c.opts.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABCD'[k]}</span><span>${esc(o)}</span></button>`).join('')}</div><div id="cfb" role="status"></div></div>`}
+function bindCheck(c,cb){
+  app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+    const k=+b.dataset.k;app.querySelectorAll('.opt').forEach(x=>x.classList.remove('right','wrong'));
+    const ok=k===c.a;b.classList.add(ok?'right':'wrong');
+    document.getElementById('cfb').innerHTML=ok?`<div class="fb ok">✓ Tepat sekali!<p>${esc(c.why)}</p><p><a href="#materi">Kembali ke Peta Belajar</a> atau <a href="#lab">coba di Lab Rumus</a>.</p></div>`
+      :`<div class="fb bad">✗ Belum tepat, coba lagi.<p>Baca lagi langkah sebelumnya, lalu pilih jawaban lain.</p></div>`;
+    cb(ok)})
+}
+
+function lab(){
+  let cur=TASKS.find(t=>!S.tasks[t.id])||TASKS[0];let hintN=0;let lastF='';
+  function render(){
+    const t=cur;const tcol=t.target;const nameCell=tcol+'2';
+    app.innerHTML=`<section class="view"><div style="display:grid;gap:8px"><span class="eyebrow">Lab Rumus</span><h1>Tulis rumusnya, Excel mini yang memeriksa</h1><p class="lead">Ketik rumus untuk sel <b class="mono">${nameCell}</b>, lalu tekan <b>Jalankan</b>. Rumusmu otomatis ditarik ke baris di bawahnya seperti di Excel.</p></div>
+    <div class="tasks" role="group" aria-label="Pilih tantangan">${TASKS.map(x=>`<button class="task-btn${S.tasks[x.id]?' done':''}" aria-pressed="${x===t}" data-id="${x.id}">${x.name}</button>`).join('')}</div>
+    <div class="lab"><div class="lab-main">
+      <div class="panel" style="display:grid;gap:14px"><div><b>Tantangan:</b> ${t.goal}</div>
+       <form id="fForm" class="fx" autocomplete="off"><label class="name" for="fIn">${nameCell}</label><span class="ico">fx</span><input id="fIn" spellcheck="false" placeholder='Contoh awal: =IF(' value="${esc(lastF)}" aria-describedby="sepn"></form>
+       <div class="row"><button class="btn" id="run" type="submit" form="fForm">▶ Jalankan</button><button class="btn alt" id="reset" type="button">Hapus</button></div>
+       <span class="sep-note" id="sepn">Pemisah boleh titik koma <span class="mono">;</span> (Excel bahasa Indonesia) atau koma <span class="mono">,</span>.</span>
+      </div>
+      <div class="sheet-scroll"><table class="sheet" id="grid"></table></div>
+      <div id="lfb" role="status"></div>
+    </div>
+    <aside class="side"><div class="panel" style="display:grid;gap:10px"><b>Butuh bantuan?</b><div class="hint" id="hintBox">Petunjuk muncul bertahap. Coba dulu sendiri, ya!</div><button class="btn alt" id="hintB" type="button">Minta petunjuk (${hintN}/${t.hints.length})</button></div>
+     <div class="panel" style="display:grid;gap:6px"><b>Contekan kecil</b><span class="mono" style="font-size:.9rem">=IF(syarat; jika_benar; jika_salah)</span><span class="mono" style="font-size:.9rem">AND(syarat1; syarat2)</span><span class="mono" style="font-size:.9rem">OR(syarat1; syarat2)</span><span style="font-size:.9rem;color:var(--muted)">Teks selalu dalam kutip: "Tuntas"</span></div></aside></div></section>`;
+    drawGrid(null);
+    app.querySelectorAll('.task-btn').forEach(b=>b.onclick=()=>{cur=TASKS.find(x=>x.id===b.dataset.id);hintN=0;lastF='';render()});
+    document.getElementById('fForm').onsubmit=e=>{e.preventDefault();check()};
+    document.getElementById('reset').onclick=()=>{lastF='';document.getElementById('fIn').value='';drawGrid(null);document.getElementById('lfb').innerHTML='';document.getElementById('fIn').focus()};
+    document.getElementById('hintB').onclick=()=>{if(hintN<t.hints.length)hintN++;document.getElementById('hintBox').innerHTML=t.hints.slice(0,hintN).map((h,k)=>`<p style="margin:0 0 6px"><b>${k+1}.</b> ${esc(h)}</p>`).join('');document.getElementById('hintB').textContent=`Minta petunjuk (${hintN}/${t.hints.length})`};
+  }
+  function drawGrid(results){
+    const t=cur;const letters='ABCDEFG'.slice(0,t.cols.length).split('');
+    let h=`<thead><tr><th class="rn"></th>${letters.map(l=>`<th>${l}</th>`).join('')}</tr></thead><tbody><tr class="hdr"><td class="rn">1</td>${t.cols.map(c=>`<td>${c}</td>`).join('')}</tr>`;
+    t.rows.forEach((r,i)=>{h+=`<tr><td class="rn">${i+2}</td>${r.map(v=>`<td class="${typeof v==='number'?'num':''}">${v}</td>`).join('')}`;
+      if(results){const x=results[i];h+=`<td class="${x.ok?'ok':'bad'}${i===0?' sel':''}">${x.ok?'✓ ':'✗ '}${esc(String(x.v))}</td>`}else h+=`<td class="${i===0?'sel':''}"></td>`;h+='</tr>'});
+    document.getElementById('grid').innerHTML=h+'</tbody>';
+  }
+  function check(){
+    const t=cur;const raw=document.getElementById('fIn').value.trim();lastF=raw;const fb=document.getElementById('lfb');
+    const say=(cls,title,msg)=>fb.innerHTML=`<div class="fb ${cls}">${title}<p>${msg}</p></div>`;
+    if(!raw){say('info','Kolom rumus masih kosong.','Mulailah dengan tanda = lalu nama fungsi, misalnya =IF(');return}
+    if(raw[0]!=='='){drawGrid(null);say('bad','✗ Rumus belum diawali tanda =','Di Excel, setiap rumus harus dimulai dengan tanda sama dengan (=). Tanpa itu, Excel menganggapnya teks biasa.');return}
+    const letters='ABCDEFG';let ast;
+    try{ast=parse(tokenize(raw.slice(1)))}catch(e){drawGrid(null);say('bad','✗ Rumusnya belum bisa dibaca',esc(e.message));return}
+    const results=[];
+    try{t.rows.forEach((r,i)=>{const ctx={get(ref){const col=ref.match(/[A-Z]+/)[0],row=+ref.match(/[0-9]+/)[0]+i;const ci=letters.indexOf(col),ri=row-2;
+        if(ci===letters.indexOf(t.target))throw new FErr('circ','Rumusmu memakai sel '+col+(row-i)+', yaitu sel rumus itu sendiri. Pakai sel data di kolom sebelah kiri.');
+        if(ri<0||ri>=t.rows.length||ci<0||ci>=r.length)throw new FErr('ref','Sel '+col+(row-i)+' berada di luar tabel data atau kosong. Pakai sel di baris 2 sesuai kolom datanya.');return t.rows[ri][ci]}};
+      const v=evaluate(ast,ctx);const exp=t.expect(r);const vs=typeof v==='boolean'?(v?'TRUE':'FALSE'):String(v);
+      results.push({v:vs,ok:vs.trim().toLowerCase()===exp.toLowerCase(),exp})})}
+    catch(e){drawGrid(null);say('bad','✗ Ada yang perlu diperbaiki',esc(e.message));return}
+    drawGrid(results);
+    const wrong=results.map((x,i)=>x.ok?-1:i).filter(i=>i>=0);
+    if(!wrong.length){S.tasks[t.id]=1;save();
+      const nxt=TASKS.find(x=>!S.tasks[x.id]);
+      fb.innerHTML=`<div class="fb ok">✓ Semua baris benar. Hebat!<p>Rumusmu bekerja untuk semua ${t.rows.length} baris data.${nxt?` <button class="btn ghost" id="goNext" type="button">Lanjut ke “${nxt.name}” →</button>`:' Semua tantangan selesai. <a href="#kuis">Coba kuisnya</a>.'}</p></div>`;
+      app.querySelectorAll('.task-btn').forEach(b=>b.classList.toggle('done',!!S.tasks[b.dataset.id]));
+      const g=document.getElementById('goNext');if(g)g.onclick=()=>{cur=nxt;hintN=0;lastF='';render()};return}
+    let msg='';
+    const labels=[...new Set(t.rows.map(t.expect))];
+    if(labels.length===2&&results.every(x=>x.v.toLowerCase()===labels.find(l=>l!==x.exp).toLowerCase()))
+      msg='Sepertinya hasil “jika benar” dan “jika salah” tertukar. Bagian kedua IF untuk syarat yang TRUE, bagian ketiga untuk yang FALSE.';
+    else if(t.edge&&wrong.length===1&&wrong[0]===t.edge.row)msg=t.edge.msg;
+    else if(results.some(x=>x.v==='TRUE'||x.v==='FALSE'))msg='Hasilnya masih TRUE/FALSE. Masukkan syarat itu ke dalam IF supaya muncul teks yang diminta.';
+    else msg='Ada '+wrong.length+' baris yang belum sesuai (ditandai ✗). Periksa syarat dan tulisan teksnya. Ejaan teks harus sama persis dengan yang diminta.';
+    say('bad','✗ Hampir! '+(t.rows.length-wrong.length)+' dari '+t.rows.length+' baris benar.',esc(msg));
+  }
+  render();
+}
+
+function kuis(){
+  let i=0,score=0,answered=false;
+  function render(){
+    if(i>=QUIZ.length){const pct=Math.round(score/QUIZ.length*100);if(pct>(S.quiz||0)){S.quiz=pct;save()}
+      app.innerHTML=`<section class="view"><div class="panel" style="display:grid;gap:14px;max-width:640px"><span class="eyebrow">Hasil Kuis</span><div class="score">${pct}</div>
+      <p style="margin:0">${score} dari ${QUIZ.length} soal benar. ${pct>=80?'Kamu sudah menguasai rumus logika dasar.':'Ulangi materi yang masih sulit, lalu coba lagi.'}</p>
+      <div class="row"><button class="btn" id="again">Ulangi kuis</button><a class="btn alt" href="#materi">Kembali ke materi</a></div></div></section>`;
+      document.getElementById('again').onclick=()=>{i=0;score=0;render()};return}
+    const q=QUIZ[i];answered=false;
+    app.innerHTML=`<section class="view"><div class="panel q" style="max-width:720px"><div class="row" style="justify-content:space-between"><span class="eyebrow">Kuis · Soal ${i+1} dari ${QUIZ.length}</span><span class="stepcount">Skor: ${score}</span></div>
+    <h2 style="font-size:1.25rem">${esc(q.q)}</h2><div class="opts">${q.opts.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABCD'[k]}</span><code>${esc(o)}</code></button>`).join('')}</div><div id="qfb" role="status"></div></div></section>`;
+    app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{if(answered)return;answered=true;const k=+b.dataset.k,ok=k===q.a;if(ok)score++;
+      b.classList.add(ok?'right':'wrong');if(!ok)app.querySelector(`.opt[data-k="${q.a}"]`).classList.add('right');
+      document.getElementById('qfb').innerHTML=`<div class="fb ${ok?'ok':'bad'}">${ok?'✓ Benar!':'✗ Belum tepat.'}<p>${esc(q.why)}</p></div><div class="row" style="margin-top:10px"><button class="btn" id="qn">${i===QUIZ.length-1?'Lihat hasil':'Soal berikutnya →'}</button></div>`;
+      document.getElementById('qn').onclick=()=>{i++;render()};document.getElementById('qn').focus()});
+  }
+  render();
+}
+
+function info(){
+  app.innerHTML=`<section class="view"><div style="display:grid;gap:8px"><span class="eyebrow">Petunjuk & Informasi</span><h1>Cara memakai LogiSel</h1></div>
+  <div class="units">
+   <div class="panel" style="display:grid;gap:8px"><h3>Untuk siswa</h3><ol class="tp"><li>Buka <b>Peta Belajar</b> dan mulai dari materi A1.</li><li>Baca setiap langkah, lalu jawab <b>Cek pemahaman</b>.</li><li>Latih rumus di <b>Lab Rumus</b>. Jika bingung, tekan <b>Minta petunjuk</b>.</li><li>Kerjakan <b>Kuis</b>. Target skor minimal 80.</li></ol></div>
+   <div class="panel" style="display:grid;gap:8px"><h3>Untuk guru</h3><p style="margin:0">Media dipakai pada jam pertama untuk pengenalan konsep (±20 menit) dan sebagai latihan mandiri. Jam kedua tetap untuk praktik di Microsoft Excel. Siswa yang butuh pendampingan bisa belajar dengan kecepatannya sendiri.</p></div>
+   <div class="panel" style="display:grid;gap:8px"><h3>Tujuan pembelajaran</h3><ol class="tp"><li>Siswa dapat menentukan hasil TRUE/FALSE dari operator perbandingan.</li><li>Siswa dapat menulis fungsi IF dengan tiga argumen yang benar.</li><li>Siswa dapat menggunakan AND/OR di dalam IF untuk dua syarat.</li></ol></div>
+   <div class="panel" style="display:grid;gap:8px"><h3>Tentang media</h3><p style="margin:0">Prototipe v0.1 untuk UTS Teknologi Pembelajaran. Sasaran: siswa kelas 6 SD Tarakanita Solo Baru. Kemajuan belajar tersimpan di peramban perangkat yang dipakai. Semua ilustrasi dibuat sendiri; Microsoft Excel adalah merek dagang Microsoft dan hanya disebut sebagai nama aplikasi.</p></div>
+  </div></section>`;
+}
+
+updateProg();route();
+</script>
+</body>
+</html>
